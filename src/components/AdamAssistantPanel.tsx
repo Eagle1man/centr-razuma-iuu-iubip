@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
+  describeVoice,
   getVoicePref,
   getVoiceQuality,
   getVoiceRate,
@@ -26,13 +27,17 @@ import {
   onSoundSettingsChange,
   playSfx,
   playVoice,
+  prepareSpeechText,
   setVoicePref,
   setVoiceRate,
   speakHero,
+  speakText,
   stopSpeaking,
   toggleSound,
   toggleVoice,
   unlockSpeech,
+  voiceTwin,
+  type VoiceReport,
 } from '../lib/heroSounds';
 import { ADAM_GREETING, getAdamKnowledge } from '../lib/adamKnowledge';
 import { getBooksByCategory } from '../lib/libraryData';
@@ -63,6 +68,12 @@ const PANEL_TABS = [
   { id: 'explain' as const, label: 'Объяснение', icon: BookOpen },
   { id: 'quiz' as const, label: 'Тест', icon: ListChecks },
 ];
+
+/* Фраза-ловушка для проверки произношения: путь, ссылка, единица измерения,
+   сокращение и латиница. Ровно то, что раньше читалось вслух как «бэк слэш
+   стретч» и «эн пи эм». */
+const PRONOUNCE_TEST =
+  'Открой файл C:\\Users\\user\\docs\\readme.md, затем перейди на https://example.com/guide, купи 20 см. ткани, т. д., и выполни npm install.';
 
 /** Реплика с эффектом печатной машинки */
 function HeroSpeech({ text, speed = 18, voice }: { text: string; speed?: number; voice?: CharacterId }) {
@@ -164,6 +175,41 @@ export function AdamPanel({
     setActiveId(id);
     setTab('explain');
     setStep(0);
+  };
+
+  /* Что система произнесёт на самом деле: имя голоса, темп и чей это голос.
+     Пересчитываем при смене героя, голоса, темпа и списка системных голосов. */
+  const [report, setReport] = useState<VoiceReport | null>(null);
+  useEffect(() => {
+    if (!voice || !character) {
+      setReport(null);
+      return;
+    }
+    setReport(describeVoice(character.id));
+  }, [voice, character, voicesList, voicePref, voiceRate]);
+
+  const twinId = character ? voiceTwin(character.id) : undefined;
+  const twin = character && twinId && twinId !== character.id ? twinId : null;
+  const twinName = twin ? CHARACTERS.find((item) => item.id === twin)?.name ?? null : null;
+
+  /* Одно и то же предложение дважды подряд: сначала героем, затем его
+     близнецом. Равенство голосов слышно сразу, а не по памяти. */
+  const compareWithTwin = () => {
+    if (!character) return;
+    const phrase = 'Слушайте, как я читаю одно и то же предложение.';
+    stopSpeaking();
+    window.setTimeout(() => {
+      speakText(phrase, {
+        character: character.id,
+        onEnd: twin ? () => window.setTimeout(() => speakHero(phrase, twin), 700) : undefined,
+      });
+    }, 100);
+  };
+
+  const testPronunciation = () => {
+    if (!character) return;
+    stopSpeaking();
+    window.setTimeout(() => speakHero(PRONOUNCE_TEST, character.id), 100);
   };
 
   return (
@@ -323,6 +369,51 @@ export function AdamPanel({
               Кейн звучит ровно так же, как Адам, а Бани — как Николь: тот же голос и та же
               интонация. Ползунок слева — медленнее и вдумчивее, справа — быстрее.
             </p>
+
+            {character && report && (
+              <div className="space-y-2 rounded-md border border-border bg-background/60 px-2.5 py-2">
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  Сейчас говорит голосом{' '}
+                  <span className="font-medium text-foreground">{report.voiceName}</span>
+                  {' · темп '}
+                  {report.rate.toFixed(2).replace('.', ',')}
+                  {twinName && (
+                    <>
+                      {' · это голос '}
+                      <span className="font-medium text-foreground">{twinName}</span>
+                    </>
+                  )}
+                </p>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {twinName && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-[11px]"
+                      onClick={compareWithTwin}
+                    >
+                      <AudioLines className="h-3 w-3 mr-1" /> Сравнить с {twinName}
+                    </Button>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-[11px]"
+                    onClick={testPronunciation}
+                  >
+                    <BookOpen className="h-3 w-3 mr-1" /> Проверить произношение
+                  </Button>
+                </div>
+
+                <p className="text-[10px] leading-snug text-muted-foreground">
+                  Будет произнесено: «{prepareSpeechText(PRONOUNCE_TEST)}»
+                </p>
+              </div>
+            )}
           </div>
         )}
 

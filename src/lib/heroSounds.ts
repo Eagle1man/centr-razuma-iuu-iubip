@@ -175,10 +175,10 @@ const VOICE_PROFILES: Record<CharacterId, VoiceProfile> = {
   // Адам — рыцарь-наставник: ровный, спокойный, чуть ниже среднего.
   // Задаёт манеру и Кейну.
   adam: {
-    rate: 0.9,
+    rate: 0.86,
     pitch: 0.93,
     volume: 1,
-    gap: 250,
+    gap: 420,
     hints: [
       'Microsoft Dmitry',
       'Dmitry',
@@ -194,10 +194,10 @@ const VOICE_PROFILES: Record<CharacterId, VoiceProfile> = {
   // Николь — хранительница туризма: светлый приветливый голос.
   // Задаёт манеру и Бани.
   nicole: {
-    rate: 0.93,
+    rate: 0.89,
     pitch: 1.04,
     volume: 1,
-    gap: 230,
+    gap: 400,
     hints: [
       'Microsoft Svetlana',
       'Svetlana',
@@ -460,6 +460,41 @@ function pickVoice(character?: CharacterId): SpeechSynthesisVoice | null {
 
   if (key) voiceCache.set(key, chosen)
   return chosen
+}
+
+/* --------------------------------------------------------------------------
+   Проверка без ушей: что именно собирается произнести система.
+
+   На слух равенство «Кейн = Адам» не проверить — два одинаковых голоса
+   неразличимы. Поэтому панель показывает имя системного голоса и темп,
+   которые применятся к следующей реплике.
+   ------------------------------------------------------------------------ */
+
+/** Отчёт о речи героя: какой системный голос выбран и с каким темпом. */
+export interface VoiceReport {
+  voiceName: string
+  lang: string
+  /** Чей это голос на самом деле: у Кейна — голос Адама. */
+  twin: CharacterId | null
+  rate: number
+  pitch: number
+}
+
+export function describeVoice(character?: CharacterId): VoiceReport {
+  const voice = pickVoice(character)
+  const profile = profileFor(character)
+  return {
+    voiceName: voice?.name ?? '—',
+    lang: voice?.lang ?? '',
+    twin: (character && VOICE_TWIN[character]) || null,
+    rate: Math.round(profile.rate * getVoiceRate() * 100) / 100,
+    pitch: profile.pitch,
+  }
+}
+
+/** Текст после очистки — то, что синтез услышит на самом деле. */
+export function prepareSpeechText(text: string): string {
+  return humanize(text)
 }
 
 /**
