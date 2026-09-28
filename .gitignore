@@ -15,12 +15,14 @@ public/config.js
 !.env.example
 
 # Прочее
+.claude/
 *.local
 .DS_Store
 Thumbs.db
 *.log
 build-log.txt
 build-check.ps1
+CHECK.bat
 git-log.txt
 git-publish.ps1
 extract-bundle.mjs

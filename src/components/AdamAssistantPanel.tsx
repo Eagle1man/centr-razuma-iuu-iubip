@@ -17,11 +17,17 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
+  getVoicePref,
   getVoiceQuality,
+  getVoiceRate,
   isSoundEnabled,
   isVoiceEnabled,
+  listRuVoices,
+  onSoundSettingsChange,
   playSfx,
   playVoice,
+  setVoicePref,
+  setVoiceRate,
   speakHero,
   stopSpeaking,
   toggleSound,
@@ -111,11 +117,17 @@ export function AdamPanel({
   const [sound, setSound] = useState(isSoundEnabled());
   const [voice, setVoice] = useState(isVoiceEnabled());
   const [voiceQuality, setVoiceQuality] = useState<'natural' | 'standard' | 'none'>('natural');
+  const [voicesList, setVoicesList] = useState<SpeechSynthesisVoice[]>([]);
+  const [voicePref, setVoicePrefState] = useState(getVoicePref('all'));
+  const [voiceRate, setVoiceRateState] = useState(getVoiceRate());
 
   /* Качество голосов зависит от браузера и системы, а список голосов Chrome
      отдаёт асинхронно — проверяем дважды и по событию voiceschanged. */
   useEffect(() => {
-    const check = () => setVoiceQuality(getVoiceQuality());
+    const check = () => {
+      setVoiceQuality(getVoiceQuality());
+      setVoicesList(listRuVoices());
+    };
     check();
     const timer = window.setTimeout(check, 900);
     const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
@@ -124,6 +136,12 @@ export function AdamPanel({
       window.clearTimeout(timer);
       synth?.removeEventListener?.('voiceschanged', check);
     };
+  }, []);
+
+  /* Регулятор темпа общий для всех героев и хранится в localStorage,
+     поэтому подтягиваем его и при изменении настроек из другой вкладки. */
+  useEffect(() => {
+    return onSoundSettingsChange(() => setVoiceRateState(getVoiceRate()));
   }, []);
 
   /* Открытие со страницы издания сразу выбирает героя раздела — как в бандле. */
@@ -231,11 +249,92 @@ export function AdamPanel({
           </div>
         )}
 
-        {voice && voiceQuality === 'standard' && (
+        {voice && (
+          <div className="mx-4 mt-3 space-y-2 rounded-lg border border-border bg-muted/50 px-3 py-2">
+            {voicesList.length > 1 ? (
+              <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="shrink-0">Голос героев:</span>
+
+                <select
+                  value={voicePref}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setVoicePref('all', next);
+                    setVoicePrefState(next);
+                    playSfx('click');
+                    // Короткая проба новым голосом, чтобы услышать выбор сразу.
+                    if (next) {
+                      stopSpeaking();
+                      window.setTimeout(() => speakHero('Привет! Так звучит новый голос.', undefined), 80);
+                    }
+                  }}
+                  className="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground"
+                >
+                  <option value="">Авто — самый человечный</option>
+                  {voicesList.map((item) => (
+                    <option key={item.name} value={item.name}>
+                      {item.name.replace(/^Microsoft |^Google /, '')}
+                      {/natural|neural|нейро/i.test(item.name) ? ' ★' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              voicesList.length === 1 && (
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  В системе всего один русский голос — {voicesList[0].name}. Чтобы было из чего
+                  выбирать, добавьте ещё: «Параметры → Время и язык → Речь → Управление голосами».
+                </p>
+              )
+            )}
+
+            <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span className="shrink-0">Скорость речи:</span>
+
+              <input
+                type="range"
+                min={0.6}
+                max={1.5}
+                step={0.05}
+                value={voiceRate}
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  setVoiceRate(next);
+                  setVoiceRateState(next);
+                }}
+                onPointerUp={() => {
+                  // Проба темпа голосом открытого героя — слышно сразу.
+                  stopSpeaking();
+                  window.setTimeout(
+                    () => speakHero('Так теперь звучат герои: спокойно и размеренно.', character?.id),
+                    80,
+                  );
+                }}
+                aria-label="Скорость речи героев"
+                className="min-w-0 flex-1 accent-primary"
+              />
+
+              <span className="w-9 shrink-0 text-right tabular-nums text-foreground">
+                {voiceRate.toFixed(2).replace('.', ',')}×
+              </span>
+            </label>
+
+            <p className="text-[10px] leading-snug text-muted-foreground">
+              Кейн звучит ровно так же, как Адам, а Бани — как Николь: тот же голос и та же
+              интонация. Ползунок слева — медленнее и вдумчивее, справа — быстрее.
+            </p>
+          </div>
+        )}
+
+        {voice && voiceQuality === 'standard' && !voicePref && voicesList.length !== 1 && (
           <p className="mx-4 mt-3 rounded-lg border border-border bg-muted/50 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
             Голоса звучат машинно: в этом браузере нет нейронных голосов. Откройте сайт в{' '}
             <span className="font-medium text-foreground">Microsoft Edge</span> — там русские голоса
-            «Online Natural» звучат по-человечески, как дикторские.
+            «Online Natural» (Dmitry и Svetlana) звучат по-человечески, как дикторские. Либо добавьте
+            голоса в Windows: «Параметры → Время и язык → Речь → Управление голосами → Добавить
+            голоса», полностью закройте и откройте браузер, а затем выберите голос в селекторе выше.
+            Голоса RHVoice ставит{' '}
+            <span className="font-medium text-foreground">install-voices.bat</span>.
           </p>
         )}
 
