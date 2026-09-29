@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Route, Routes, useLocation, matchPath } from 'react-router-dom'
 import { ThemeProvider } from '@/hooks/useTheme'
 import { Toaster } from '@/components/ui/sonner'
@@ -13,6 +14,13 @@ import { routes } from './routes'
 
 function AppShell() {
   const location = useLocation()
+
+  /* E2E-признак «React смонтировался»: проставляется только после реального
+     mount, поэтому проверка не может пройти на статичном index.html. */
+  useEffect(() => {
+    document.documentElement.dataset.spaMounted = 'true'
+  }, [])
+
   const active = routes.find((route) => matchPath(route.path, location.pathname))
 
   /* Страница издания передаёт панели героев своё направление (в бандле — проп
@@ -23,7 +31,7 @@ function AppShell() {
     : undefined
 
   return (
-    <div className="preload-guard" key={location.pathname}>
+    <div className="preload-guard" key={location.pathname} data-e2e="razum-app">
       <Routes>
         {routes.map((route) => (
           <Route
