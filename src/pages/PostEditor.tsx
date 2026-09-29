@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -25,14 +25,90 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { CATEGORIES } from '@/lib/characters'
-import { SAMPLE_BOOKS } from '@/lib/libraryData'
-import { useData } from '@/hooks/useData'
+import { CATEGORIES, type CategoryId } from '@/lib/characters'
+import { getBookById } from '@/lib/api'
 import { usePageMeta } from '@/hooks/usePageMeta'
 
-/* ВОССТАНОВЛЕНО: страница не дошла в дампе. Маршруты /editor и /editor/:id
-   из routes.tsx (оба под ProtectedRoute). Формы — react-hook-form + zod,
-   как в зависимостях package.json. */
+/* Маршруты /editor и /editor/:id из routes.tsx (оба под ProtectedRoute).
+   Источник правды — SQLite нового бэкенда: POST /api/books (создать),
+   PATCH /api/books/{id} (обновить). Формат полей — snake_case из
+   backend/books_api.py (BookCreate/BookUpdate). Base URL — как в
+   src/lib/api.ts: window.__APP_CONFIG__.libraryApi, default '/api'.
+   Токен X-Ingest-Token — из конфига или поля формы, в код не хардкодим. */
+
+/** Строковая категория фронта -> числовой category_id бэкенда. */
+const CATEGORY_TO_ID: Record<CategoryId, number> = {
+  tourism: 1,
+  law: 2,
+  economics: 3,
+  pharmacy: 4,
+}
+
+const ID_TO_CATEGORY: Record<number, CategoryId> = {
+  1: 'tourism',
+  2: 'law',
+  3: 'economics',
+  4: 'pharmacy',
+}
+
+function getLibraryBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const raw = (window.__APP_CONFIG__ as { libraryApi?: string } | undefined)?.libraryApi
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      return raw.trim().replace(/\/+$/, '')
+    }
+  }
+  return '/api'
+}
+
+/** Токен из конфига (не хардкод): читаем при каждом сохранении. */
+function getConfiguredToken(): string {
+  if (typeof window === 'undefined') return ''
+  const raw = (window.__APP_CONFIG__ as { ingestToken?: string } | undefined)?.ingestToken
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+interface BookPayload {
+  title: string
+  author: string
+  year: number
+  category_id: number
+  annotation: string
+  content: string
+}
+
+async function saveBook(
+  id: string | undefined,
+  payload: BookPayload,
+  token: string,
+): Promise<{ ok: boolean; status: number; bookId?: string }> {
+  const base = getLibraryBaseUrl()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  }
+  if (token) headers['X-Ingest-Token'] = token
+  const url = id ? `${base}/books/${encodeURIComponent(id)}` : `${base}/books`
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: id ? 'PATCH' : 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    return { ok: false, status: 0 }
+  }
+  if (!res.ok) return { ok: false, status: res.status }
+  let bookId = id
+  try {
+    const data = (await res.json()) as { id?: string | number }
+    if (data && data.id !== undefined) bookId = String(data.id)
+  } catch {
+    /* id уже есть из ответа/параметра */
+  }
+  return { ok: true, status: res.status, bookId }
+}
 
 const schema = z.object({
   title: z.string().min(3, 'Название не короче 3 символов'),
@@ -45,6 +121,7 @@ const schema = z.object({
   categoryId: z.enum(['tourism', 'law', 'economics', 'pharmacy']),
   annotation: z.string().min(20, 'Аннотация не короче 20 символов'),
   content: z.string().min(50, 'Текст издания не короче 50 символов'),
+  ingestToken: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -53,9 +130,7 @@ export default function PostEditor() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isEdit = Boolean(id)
-  const existing = isEdit ? SAMPLE_BOOKS.find((book) => book.id === id) : undefined
-
-  const { insert, update } = useData('books', { enabled: false })
+  const [loadingBook, setLoadingBook] = useState(isEdit)
 
   usePageMeta({
     title: isEdit ? 'Редактирование издания' : 'Добавление издания',
@@ -71,39 +146,59 @@ export default function PostEditor() {
       categoryId: 'tourism',
       annotation: '',
       content: '',
+      ingestToken: getConfiguredToken(),
     },
   })
 
   useEffect(() => {
-    if (!existing) return
-    form.reset({
-      title: existing.title,
-      author: existing.author,
-      year: existing.year,
-      categoryId: existing.categoryId,
-      annotation: existing.annotation,
-      content: existing.content,
-    })
-  }, [existing, form])
+    if (!id) return
+    let cancelled = false
+    setLoadingBook(true)
+    getBookById(id)
+      .then((book) => {
+        if (cancelled || !book) return
+        form.reset({
+          title: book.title,
+          author: book.author,
+          year: book.year,
+          categoryId: (ID_TO_CATEGORY[Number(book.categoryId)] ?? book.categoryId) as FormValues['categoryId'],
+          annotation: book.annotation,
+          content: book.content,
+          ingestToken: getConfiguredToken(),
+        })
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingBook(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [id, form])
 
   const onSubmit = async (values: FormValues) => {
-    if (isEdit && existing) {
-      const ok = await update(existing.id, values as never)
-      if (ok) {
-        toast.success('Издание обновлено')
-        navigate(`/book/${existing.id}`)
-      } else {
-        toast.error('Не удалось сохранить изменения: база данных не ответила')
-      }
+    const token = values.ingestToken?.trim() || getConfiguredToken()
+    const payload: BookPayload = {
+      title: values.title,
+      author: values.author,
+      year: values.year,
+      category_id: CATEGORY_TO_ID[values.categoryId],
+      annotation: values.annotation,
+      content: values.content,
+    }
+    const result = await saveBook(id, payload, token)
+    if (result.ok) {
+      toast.success(isEdit ? 'Издание обновлено' : 'Издание добавлено в каталог')
+      navigate(isEdit && result.bookId ? `/book/${result.bookId}` : '/')
       return
     }
-
-    const created = await insert(values as never)
-    if (created) {
-      toast.success('Издание добавлено в каталог')
-      navigate('/')
+    if (result.status === 0) {
+      toast.error('Бэкенд недоступен: проверьте, что API запущено')
+    } else if (result.status === 401) {
+      toast.error('Неверный X-Ingest-Token: проверьте токен в поле формы')
+    } else if (result.status === 404 && isEdit) {
+      toast.error('Издание не найдено на бэкенде')
     } else {
-      toast.error('Не удалось добавить издание: база данных не подключена')
+      toast.error(`Не удалось сохранить (HTTP ${result.status})`)
     }
   }
 
@@ -238,8 +333,34 @@ export default function PostEditor() {
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="ingestToken"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Токен публикации</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        autoComplete="off"
+                        placeholder="X-Ingest-Token (по умолчанию из конфига)"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Заголовок X-Ingest-Token для записи в каталог. Подставляется из
+                      конфигурации сайта, при необходимости введите вручную.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="flex flex-wrap gap-3">
-                <Button type="submit" disabled={form.formState.isSubmitting}>
+                <Button
+                  type="submit"
+                  disabled={form.formState.isSubmitting || loadingBook}
+                >
                   <Save className="mr-2 h-4 w-4" />
                   {isEdit ? 'Сохранить изменения' : 'Добавить в каталог'}
                 </Button>

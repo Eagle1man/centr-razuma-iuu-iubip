@@ -18,7 +18,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { CharacterAvatar } from '@/components/CharacterAvatar'
 import { CATEGORIES, getCharacterByCategory, getHeroBookLine } from '@/lib/characters'
-import { SAMPLE_BOOKS, getBookById } from '@/lib/libraryData'
+import { getBookById } from '@/lib/libraryData'
+import { useCatalog } from '@/hooks/useCatalog'
 import { speakHero } from '@/lib/heroSounds'
 import { usePageMeta } from '@/hooks/usePageMeta'
 
@@ -33,7 +34,8 @@ function categoryTitle(categoryId: string): string {
 
 export default function Book() {
   const { id = '' } = useParams()
-  const book = getBookById(id)
+  const { books: catalogBooks } = useCatalog()
+  const book = catalogBooks.find((item) => item.id === id) ?? getBookById(id)
   const [saved, setSaved] = useState(false)
 
   usePageMeta({
@@ -56,7 +58,7 @@ export default function Book() {
   }
 
   const direction = CATEGORIES.find((item) => item.id === book.categoryId)
-  const related = SAMPLE_BOOKS.filter(
+  const related = catalogBooks.filter(
     (item) => item.categoryId === book.categoryId && item.id !== book.id
   ).slice(0, 3)
   const character = getCharacterByCategory(book.categoryId)

@@ -1,5 +1,7 @@
 import * as React from 'react'
 import Home from './pages/Home'
+import Search from './pages/Search'
+import Intake from './pages/Intake'
 import Book from './pages/Book'
 import Reader from './pages/Reader'
 import PostEditor from './pages/PostEditor'
@@ -21,6 +23,20 @@ export const routes: RouteConfig[] = [
     path: '/',
     label: 'Каталог',
     element: <Home />,
+    showInNav: true,
+    layout: 'default'
+  },
+  {
+    path: '/search',
+    label: 'Поиск ЭБС',
+    element: <Search />,
+    showInNav: true,
+    layout: 'default'
+  },
+  {
+    path: '/intake',
+    label: 'Приём книг',
+    element: <ProtectedRoute><Intake /></ProtectedRoute>,
     showInNav: true,
     layout: 'default'
   },

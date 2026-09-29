@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-// Unified __APP_CONFIG__ type declaration (used by supabase.ts and useSystemStorage.ts)
+// Unified __APP_CONFIG__ type declaration (used by supabase.ts)
 interface SupabaseClientConfig {
   url: string
   publishableKey: string
@@ -13,6 +13,8 @@ interface SystemConfig {
   apiToken: string
   /** Название сайта: подставляется в <title> и og-мета (см. usePageMeta). */
   siteName?: string
+  /** Base URL библиотечного бэкенда (новый роутер /api). */
+  libraryApi?: string
   supabase?: SupabaseClientConfig
 }
 

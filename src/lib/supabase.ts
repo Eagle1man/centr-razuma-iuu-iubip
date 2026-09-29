@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { SupabaseClientConfig } from '../types'
 
 /* ВОССТАНОВЛЕНО по контракту из бандла: initSupabase() вызывается в main.tsx
-   до рендера, getSupabase() используют useAuth / useData / useSupabaseTable.
+   до рендера, getSupabase() использует useAuth.
    Настройки приходят из window.__APP_CONFIG__ (инжектит билдер Wuna). */
 
 // Схема приходит из конфига как string, поэтому обобщаем клиент соответствующе

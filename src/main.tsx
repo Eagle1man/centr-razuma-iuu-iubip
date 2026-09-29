@@ -8,8 +8,8 @@ import './fonts.css'
 import './index.css'
 import './custom.css'
 
-// Initialize Firebase before React renders. Component effects (useAuth,
-// useData) run before App's effects, so initializing in an effect would let
+// Initialize Supabase before React renders. Component effects (useAuth)
+// run before App's effects, so initializing in an effect would let
 // those hooks run against an uninitialized SDK on first paint.
 initSupabase()
 

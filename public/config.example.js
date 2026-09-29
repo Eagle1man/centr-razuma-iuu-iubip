@@ -20,6 +20,8 @@ window.__APP_CONFIG__ = {
   projectId: "01a07324-daa8-7134-ad90-a54915f6d275",
   apiToken: "",
   siteName: "Центр разума ЮУ ИУБиП",
+  // Base URL библиотечного бэкенда (новый роутер /api; плоские пути FastAPI не трогать).
+  libraryApi: "/api",
   supabase: {
     url: "",
     publishableKey: "",

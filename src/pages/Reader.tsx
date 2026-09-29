@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import EmptyState from '@/components/EmptyState'
 import { getBookById } from '@/lib/libraryData'
+import { useCatalog } from '@/hooks/useCatalog'
 import { usePageMeta } from '@/hooks/usePageMeta'
 import { speakText, stopSpeaking } from '@/lib/heroSounds'
 
@@ -14,7 +15,8 @@ import { speakText, stopSpeaking } from '@/lib/heroSounds'
 
 export default function Reader() {
   const { id = '' } = useParams()
-  const book = getBookById(id)
+  const { books: catalogBooks } = useCatalog()
+  const book = catalogBooks.find((item) => item.id === id) ?? getBookById(id)
 
   const [fontSize, setFontSize] = useState(17)
   const [rate, setRate] = useState(1)

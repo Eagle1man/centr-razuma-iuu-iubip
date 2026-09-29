@@ -244,7 +244,7 @@ Dmitry, женский Svetlana), и те же голоса добавляютс
 - каркас: `src/main.tsx`, `src/routes.tsx`, `src/types.ts`, `src/vite-env.d.ts`
 - тема и стили: токены светлой и тёмно-золотой темы в `src/index.css`,
   `src/custom.css`, правила фигур героев `.chr-*`
-- контент: каталог изданий `src/lib/catalog.ts` (14 наименований), данные
+- контент: каталог изданий `src/lib/catalog.ts` (14 наименований: id 1–13, 16), данные
   героев и описания разделов `src/lib/characters.ts`
 - примитивы shadcn/ui, `ScrollToTop`, `ThemeToggle`, `useAuth`, `useTheme`,
   `public/robots.txt`, `public/llms.txt`

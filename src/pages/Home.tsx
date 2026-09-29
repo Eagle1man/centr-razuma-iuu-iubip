@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import BuildingOutline from '@/components/BuildingOutline'
 import { CharacterBadge } from '@/components/CharacterAvatar'
 import { CATEGORIES } from '@/lib/characters'
-import { SAMPLE_BOOKS } from '@/lib/libraryData'
+import { useCatalog } from '@/hooks/useCatalog'
 import { usePageMeta } from '@/hooks/usePageMeta'
 
 /* ВОССТАНОВЛЕНО: страница не дошла в дампе. Раскладка — по design-system.json:
@@ -26,11 +26,13 @@ export default function Home() {
       'Электронная библиотека образовательной литературы ЮУ ИУБиП: туризм и гостеприимство, юриспруденция, экономика и управление, фармация и сестринское дело.',
   })
 
+  const { books: catalogBooks } = useCatalog()
+
   const books = useMemo(() => {
     const byCategory =
       activeCategory === 'all'
-        ? SAMPLE_BOOKS
-        : SAMPLE_BOOKS.filter((book) => book.categoryId === activeCategory)
+        ? catalogBooks
+        : catalogBooks.filter((book) => book.categoryId === activeCategory)
 
     const needle = query.trim().toLowerCase()
     if (!needle) return byCategory
@@ -41,7 +43,7 @@ export default function Home() {
         .toLowerCase()
         .includes(needle)
     )
-  }, [activeCategory, query])
+  }, [activeCategory, query, catalogBooks])
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params)
