@@ -462,41 +462,6 @@ function pickVoice(character?: CharacterId): SpeechSynthesisVoice | null {
   return chosen
 }
 
-/* --------------------------------------------------------------------------
-   Проверка без ушей: что именно собирается произнести система.
-
-   На слух равенство «Кейн = Адам» не проверить — два одинаковых голоса
-   неразличимы. Поэтому панель показывает имя системного голоса и темп,
-   которые применятся к следующей реплике.
-   ------------------------------------------------------------------------ */
-
-/** Отчёт о речи героя: какой системный голос выбран и с каким темпом. */
-export interface VoiceReport {
-  voiceName: string
-  lang: string
-  /** Чей это голос на самом деле: у Кейна — голос Адама. */
-  twin: CharacterId | null
-  rate: number
-  pitch: number
-}
-
-export function describeVoice(character?: CharacterId): VoiceReport {
-  const voice = pickVoice(character)
-  const profile = profileFor(character)
-  return {
-    voiceName: voice?.name ?? '—',
-    lang: voice?.lang ?? '',
-    twin: (character && VOICE_TWIN[character]) || null,
-    rate: Math.round(profile.rate * getVoiceRate() * 100) / 100,
-    pitch: profile.pitch,
-  }
-}
-
-/** Текст после очистки — то, что синтез услышит на самом деле. */
-export function prepareSpeechText(text: string): string {
-  return humanize(text)
-}
-
 /**
  * Качество доступных голосов: 'natural' — есть нейронный «дикторский» голос,
  * 'standard' — только системный синтез (звучит машинно), 'none' — синтеза нет.

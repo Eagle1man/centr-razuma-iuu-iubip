@@ -17,9 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 import {
-  describeVoice,
   getVoicePref,
-  getVoiceQuality,
   getVoiceRate,
   isSoundEnabled,
   isVoiceEnabled,
@@ -27,17 +25,13 @@ import {
   onSoundSettingsChange,
   playSfx,
   playVoice,
-  prepareSpeechText,
   setVoicePref,
   setVoiceRate,
   speakHero,
-  speakText,
   stopSpeaking,
   toggleSound,
   toggleVoice,
   unlockSpeech,
-  voiceTwin,
-  type VoiceReport,
 } from '../lib/heroSounds';
 import { ADAM_GREETING, getAdamKnowledge } from '../lib/adamKnowledge';
 import { getBooksByCategory } from '../lib/libraryData';
@@ -68,12 +62,6 @@ const PANEL_TABS = [
   { id: 'explain' as const, label: 'Объяснение', icon: BookOpen },
   { id: 'quiz' as const, label: 'Тест', icon: ListChecks },
 ];
-
-/* Фраза-ловушка для проверки произношения: путь, ссылка, единица измерения,
-   сокращение и латиница. Ровно то, что раньше читалось вслух как «бэк слэш
-   стретч» и «эн пи эм». */
-const PRONOUNCE_TEST =
-  'Открой файл C:\\Users\\user\\docs\\readme.md, затем перейди на https://example.com/guide, купи 20 см. ткани, т. д., и выполни npm install.';
 
 /** Реплика с эффектом печатной машинки */
 function HeroSpeech({ text, speed = 18, voice }: { text: string; speed?: number; voice?: CharacterId }) {
@@ -127,16 +115,14 @@ export function AdamPanel({
   const [step, setStep] = useState(0);
   const [sound, setSound] = useState(isSoundEnabled());
   const [voice, setVoice] = useState(isVoiceEnabled());
-  const [voiceQuality, setVoiceQuality] = useState<'natural' | 'standard' | 'none'>('natural');
   const [voicesList, setVoicesList] = useState<SpeechSynthesisVoice[]>([]);
   const [voicePref, setVoicePrefState] = useState(getVoicePref('all'));
   const [voiceRate, setVoiceRateState] = useState(getVoiceRate());
 
-  /* Качество голосов зависит от браузера и системы, а список голосов Chrome
-     отдаёт асинхронно — проверяем дважды и по событию voiceschanged. */
+  /* Список голосов Chrome отдаёт асинхронно — проверяем сразу и по событию
+     voiceschanged. */
   useEffect(() => {
     const check = () => {
-      setVoiceQuality(getVoiceQuality());
       setVoicesList(listRuVoices());
     };
     check();
@@ -175,41 +161,6 @@ export function AdamPanel({
     setActiveId(id);
     setTab('explain');
     setStep(0);
-  };
-
-  /* Что система произнесёт на самом деле: имя голоса, темп и чей это голос.
-     Пересчитываем при смене героя, голоса, темпа и списка системных голосов. */
-  const [report, setReport] = useState<VoiceReport | null>(null);
-  useEffect(() => {
-    if (!voice || !character) {
-      setReport(null);
-      return;
-    }
-    setReport(describeVoice(character.id));
-  }, [voice, character, voicesList, voicePref, voiceRate]);
-
-  const twinId = character ? voiceTwin(character.id) : undefined;
-  const twin = character && twinId && twinId !== character.id ? twinId : null;
-  const twinName = twin ? CHARACTERS.find((item) => item.id === twin)?.name ?? null : null;
-
-  /* Одно и то же предложение дважды подряд: сначала героем, затем его
-     близнецом. Равенство голосов слышно сразу, а не по памяти. */
-  const compareWithTwin = () => {
-    if (!character) return;
-    const phrase = 'Слушайте, как я читаю одно и то же предложение.';
-    stopSpeaking();
-    window.setTimeout(() => {
-      speakText(phrase, {
-        character: character.id,
-        onEnd: twin ? () => window.setTimeout(() => speakHero(phrase, twin), 700) : undefined,
-      });
-    }, 100);
-  };
-
-  const testPronunciation = () => {
-    if (!character) return;
-    stopSpeaking();
-    window.setTimeout(() => speakHero(PRONOUNCE_TEST, character.id), 100);
   };
 
   return (
@@ -308,10 +259,9 @@ export function AdamPanel({
                     setVoicePref('all', next);
                     setVoicePrefState(next);
                     playSfx('click');
-                    // Короткая проба новым голосом, чтобы услышать выбор сразу.
                     if (next) {
                       stopSpeaking();
-                      window.setTimeout(() => speakHero('Привет! Так звучит новый голос.', undefined), 80);
+                      window.setTimeout(() => speakHero('Так звучит новый голос.', undefined), 80);
                     }
                   }}
                   className="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] text-foreground"
@@ -328,8 +278,7 @@ export function AdamPanel({
             ) : (
               voicesList.length === 1 && (
                 <p className="text-[11px] leading-snug text-muted-foreground">
-                  В системе всего один русский голос — {voicesList[0].name}. Чтобы было из чего
-                  выбирать, добавьте ещё: «Параметры → Время и язык → Речь → Управление голосами».
+                  В системе всего один русский голос — {voicesList[0].name}.
                 </p>
               )
             )}
@@ -348,14 +297,6 @@ export function AdamPanel({
                   setVoiceRate(next);
                   setVoiceRateState(next);
                 }}
-                onPointerUp={() => {
-                  // Проба темпа голосом открытого героя — слышно сразу.
-                  stopSpeaking();
-                  window.setTimeout(
-                    () => speakHero('Так теперь звучат герои: спокойно и размеренно.', character?.id),
-                    80,
-                  );
-                }}
                 aria-label="Скорость речи героев"
                 className="min-w-0 flex-1 accent-primary"
               />
@@ -364,69 +305,7 @@ export function AdamPanel({
                 {voiceRate.toFixed(2).replace('.', ',')}×
               </span>
             </label>
-
-            <p className="text-[10px] leading-snug text-muted-foreground">
-              Кейн звучит ровно так же, как Адам, а Бани — как Николь: тот же голос и та же
-              интонация. Ползунок слева — медленнее и вдумчивее, справа — быстрее.
-            </p>
-
-            {character && report && (
-              <div className="space-y-2 rounded-md border border-border bg-background/60 px-2.5 py-2">
-                <p className="text-[11px] leading-snug text-muted-foreground">
-                  Сейчас говорит голосом{' '}
-                  <span className="font-medium text-foreground">{report.voiceName}</span>
-                  {' · темп '}
-                  {report.rate.toFixed(2).replace('.', ',')}
-                  {twinName && (
-                    <>
-                      {' · это голос '}
-                      <span className="font-medium text-foreground">{twinName}</span>
-                    </>
-                  )}
-                </p>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {twinName && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-2 text-[11px]"
-                      onClick={compareWithTwin}
-                    >
-                      <AudioLines className="h-3 w-3 mr-1" /> Сравнить с {twinName}
-                    </Button>
-                  )}
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2 text-[11px]"
-                    onClick={testPronunciation}
-                  >
-                    <BookOpen className="h-3 w-3 mr-1" /> Проверить произношение
-                  </Button>
-                </div>
-
-                <p className="text-[10px] leading-snug text-muted-foreground">
-                  Будет произнесено: «{prepareSpeechText(PRONOUNCE_TEST)}»
-                </p>
-              </div>
-            )}
           </div>
-        )}
-
-        {voice && voiceQuality === 'standard' && !voicePref && voicesList.length !== 1 && (
-          <p className="mx-4 mt-3 rounded-lg border border-border bg-muted/50 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
-            Голоса звучат машинно: в этом браузере нет нейронных голосов. Откройте сайт в{' '}
-            <span className="font-medium text-foreground">Microsoft Edge</span> — там русские голоса
-            «Online Natural» (Dmitry и Svetlana) звучат по-человечески, как дикторские. Либо добавьте
-            голоса в Windows: «Параметры → Время и язык → Речь → Управление голосами → Добавить
-            голоса», полностью закройте и откройте браузер, а затем выберите голос в селекторе выше.
-            Голоса RHVoice ставит{' '}
-            <span className="font-medium text-foreground">install-voices.bat</span>.
-          </p>
         )}
 
         <div className="max-h-[65vh] overflow-y-auto px-4 py-4">
