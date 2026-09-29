@@ -8,12 +8,11 @@
 
 <!-- design-system-fonts -->
   <!-- Substrate type system: Geist (UI/body) + Literata (editorial) -->
-<!-- wuna:selfhost-fonts v1: гарнитуры отдаёт наш store, а не внешний Google -->
+<!-- wuna:selfhost-fonts v2: гарнитуры лежат в репозитории (public/fonts), внешний CDN не используется -->
 <!-- wuna:families=Geist|Literata -->
-<link rel="preconnect" href="https://app.wuna.ai" crossorigin />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="https://app.wuna.ai/fonts/v1/geist-latin-100-900-normal.woff2" />
-<link rel="preload" as="font" type="font/woff2" crossorigin href="https://app.wuna.ai/fonts/v1/geist-cyrillic-100-900-normal.woff2" />
-<link rel="stylesheet" href="https://app.wuna.ai/fonts/v1/ds/substrate.css" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="./fonts/geist-latin-100-900-normal.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="./fonts/geist-cyrillic-100-900-normal.woff2" />
+<link rel="stylesheet" href="./fonts/ds/substrate.css" />
 
   <!-- /design-system-fonts -->
 

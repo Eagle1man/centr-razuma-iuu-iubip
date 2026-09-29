@@ -1,11 +1,11 @@
 /* Гарнитуры проекта: Geist (интерфейс) + Literata (редакционные тексты).
-   Файлы шрифтов отдаёт CDN платформы — подключение уже стоит в index.html:
+   Файлы шрифтов лежат в репозитории (public/fonts) — подключение стоит в index.html:
 
-     <link rel="stylesheet" href="https://app.wuna.ai/fonts/v1/ds/substrate.css" />
+     <link rel="stylesheet" href="./fonts/ds/substrate.css" />
 
    Здесь только объявляем переменные, которые используют утилиты Tailwind,
-   и подстраховка на случай, если CDN недоступен (тогда сработает системный
-   стек из tailwind.config.ts). */
+   и подстраховка на случай, если файлы шрифтов не загрузятся (тогда сработает
+   системный стек из tailwind.config.ts). */
 
 :root {
   --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
