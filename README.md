@@ -58,14 +58,18 @@ npm run build    # tsc && vite build
 npm run preview
 ```
 
-> **Почему `/preview/`.** `src/main.tsx` берёт basename из тега `<base>` (его
-> инжектит билдер Wuna), а без тега использует запасной `/preview`. Чтобы
-> открыть приложение с корня, добавьте в `index.html` в `<head>` строку
-> `<base href="/preview/">` — либо откройте адрес `/preview/` как есть.
+> **Про `<base>` и basename.** `src/main.tsx` берёт basename для
+> `BrowserRouter` из тега `<base>` через чистую функцию
+> `resolveBasename` (`src/lib/basename.ts`). Если тега нет — basename пустой,
+> маршруты считаются от корня `/`. Тег инжектит билдер Wuna или workflow
+> публикации; самому добавлять его в исходный `index.html` не нужно.
+> Случай `<base href="./">` (или любой относительный href) намеренно
+> игнорируется — иначе basename стал бы `"."` и роутер сломался бы.
 >
 > На GitHub Pages этот тег подставляет workflow (`.github/workflows/deploy.yml`,
 > шаг «Adapt SPA for project pages»), поэтому опубликованный сайт открывается
-> прямо по своему адресу, без `/preview/`.
+> прямо по своему адресу, без `/preview/`. При публикации на свой сервер
+> (nginx в корне домена) тег вставляется при сборке — см. следующий раздел.
 
 ## Конфигурация рантайма
 
@@ -110,7 +114,39 @@ src/
 - workflow вставляет в `dist/index.html` тег `<base href="/centr-razuma-iuu-iubip/">`
   и копирует `index.html` в `404.html`, поэтому прямые переходы на `/book/:id`
   и `/read/:id` тоже работают;
-- `src/main.tsx` читает тот же тег как basename для `BrowserRouter`.
+- `src/main.tsx` читает тот же тег как basename для `BrowserRouter` (логика —
+  `resolveBasename` из `src/lib/basename.ts`, покрыта `npm run test:basename`).
+
+## Публикация на своём сервере (nginx в корне домена)
+
+`base: './'` даёт относительные ссылки на ассеты, поэтому на глубоком маршруте
+(`/book/1`, `/read/1`) браузер запросит `/book/assets/index-*.js` и вместо
+модуля получит `index.html` (SPA fallback) — приложение останется пустым,
+хотя `/book/1` отвечает 200. На GitHub Pages это закрывает инжект `<base>`,
+а для своего сервера нужно то же самое при публикации:
+
+```bash
+npm run build
+# абсолютный <base href="/">: относительные ссылки начнут резолвиться от корня
+sed -i 's|<head>|<head>\n    <base href="/">|' dist/index.html
+sudo cp -a dist/. /var/www/razum/
+```
+
+`resolveBasename('<base href="/">')` возвращает пустую строку, то есть
+`BrowserRouter` считает маршруты от корня — согласованно с nginx-fallback.
+Проверяется приёмкой в три слоя (HTTP/API → DOM → пиксели): она ловит именно
+такой случай, когда HTTP 200 есть, а React не смонтировался.
+
+## Приёмка (для разработчика)
+
+```bash
+npm run test:basename   # регресс basename: 10 кейсов, без новых зависимостей
+```
+
+В `src/App.tsx` после монтирования выставляются маркеры
+`data-e2e="razum-app"` и `documentElement.dataset.spaMounted` — по ним
+автотесты отличают «React смонтировался» от «отдан статичный index.html»:
+первое невозможно увидеть в исходном `index.html`.
 
 ## Голоса героев
 
