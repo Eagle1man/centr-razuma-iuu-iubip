@@ -40,8 +40,6 @@ import type { ClarifyCandidate, EbsSource } from '@/lib/searchApi'
 
 type Status = 'idle' | 'loading' | 'expanding' | 'asking' | 'offline' | 'ready'
 
-const STUB_TEXT = 'Поиск станет доступен после деплоя'
-
 /* Иконки направлений: id -> компонент lucide (без эмодзи-заглушек). */
 const ICONS: Record<string, typeof Monitor> = {
   Monitor,
@@ -321,8 +319,9 @@ export default function SearchPage() {
         <Card className="mt-8 max-w-2xl bg-muted/50">
           <CardContent className="flex items-start gap-3 pt-6 text-sm text-muted-foreground">
             <BookOpen className="mt-0.5 h-4 w-4 shrink-0" />
-            Введите название предмета и нажмите «Найти». Если точный запрос ничего не
-            даст, мы спросим уточнение у модели и покажем варианты из фонда.
+            Введите название предмета и нажмите «Найти». Поиск понимает опечатки и
+            неполные слова; если тема неоднозначна — уточним у вас. Если точный запрос
+            ничего не даст, спросим языковую модель.
           </CardContent>
         </Card>
       )}
@@ -333,7 +332,8 @@ export default function SearchPage() {
             {status === 'loading' && 'Ищем книги в ЭБС…'}
             {status === 'expanding' && 'Расширяем запрос через модель, это займёт до минуты…'}
             {status === 'asking' && 'Спрашиваю модель, это займет около минуты…'}
-            {status === 'offline' && STUB_TEXT}
+            {status === 'offline' &&
+              'Поиск временно недоступен: нет связи с сервером. Попробуйте позже или включите mock-режим.'}
           </CardContent>
         </Card>
       ) : null}
