@@ -69,6 +69,31 @@ export async function searchCatalog(query: string, topK = 10): Promise<SearchRes
   }
 }
 
+/** Запрос к LLM-фолбэку. null — бэкенд недоступен или ответа нет.
+ * Контракт стабилен: POST {base}/ask {"question": ...} -> 200 {"answer": "..."}.
+ * Без авторизации, только Content-Type/Accept. Cold-ответ ~56с, таймаут 3 мин. */
+export async function askModel(question: string): Promise<string | null> {
+  const q = question.trim()
+  if (!q) return null
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), 180000)
+  try {
+    const res = await fetch(`${getSearchBaseUrl()}/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ question: q }),
+      signal: controller.signal,
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as Partial<{ answer: string }>
+    if (!data || typeof data.answer !== 'string' || !data.answer.trim()) return null
+    return data.answer
+  } catch {
+    return null
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
 /** Копирование текста: Clipboard API, fallback через textarea для http/Pages. */
 export async function copyText(text: string): Promise<boolean> {
   try {
