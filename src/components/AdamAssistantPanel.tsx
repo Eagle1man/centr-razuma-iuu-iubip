@@ -8,6 +8,8 @@ import {
   Compass,
   FlaskConical,
   ListChecks,
+  MessageCircle,
+  RefreshCw,
   Sparkles,
   Swords,
   Volume2,
@@ -33,7 +35,8 @@ import {
   unlockSpeech,
 } from '../lib/heroSounds';
 import { ADAM_GREETING, getAdamKnowledge } from '../lib/adamKnowledge';
-import { getBooksByCategory } from '../lib/libraryData';
+import { askHero } from '../lib/heroChat';
+import type { EbsSource } from '../lib/searchApi';
 import { CHARACTERS, getCharacterByCategory, type CharacterId } from '../lib/characters';
 import { QUIZ_BANKS } from '../lib/quizBanks';
 import CharacterAvatar, { AdamFigure } from './CharacterAvatar';
@@ -59,6 +62,7 @@ const HERO_ICONS: Record<CharacterId, ComponentType<{ className?: string }>> = {
 
 const PANEL_TABS = [
   { id: 'explain' as const, label: 'Объяснение', icon: BookOpen },
+  { id: 'ask' as const, label: 'Спросить', icon: MessageCircle },
   { id: 'quiz' as const, label: 'Тест', icon: ListChecks },
 ];
 
@@ -110,13 +114,20 @@ export function AdamPanel({
   initialCategory?: string;
 }) {
   const [activeId, setActiveId] = useState<CharacterId | null>(null);
-  const [tab, setTab] = useState<'explain' | 'quiz'>('explain');
+  const [tab, setTab] = useState<'explain' | 'ask' | 'quiz'>('explain');
   const [step, setStep] = useState(0);
   const [sound, setSound] = useState(isSoundEnabled());
   const [voice, setVoice] = useState(isVoiceEnabled());
   const [voicesList, setVoicesList] = useState<SpeechSynthesisVoice[]>([]);
   const [voicePref, setVoicePrefState] = useState(getVoicePref('all'));
   const [voiceRate, setVoiceRateState] = useState(getVoiceRate());
+
+  /* Свободный вопрос герою (T-1035): ответ по реальным книгам фонда ЭБС. */
+  const [heroQuestion, setHeroQuestion] = useState('');
+  const [heroThinking, setHeroThinking] = useState(false);
+  const [heroAnswer, setHeroAnswer] = useState<string | null>(null);
+  const [heroSources, setHeroSources] = useState<EbsSource[]>([]);
+  const [heroFailed, setHeroFailed] = useState(false);
 
   /* Список голосов Chrome отдаёт асинхронно — проверяем сразу и по событию
      voiceschanged. */
@@ -149,7 +160,6 @@ export function AdamPanel({
 
   const character = CHARACTERS.find((item) => item.id === activeId) ?? null;
   const knowledge = character ? getAdamKnowledge(character.categoryId) : null;
-  const books = character ? getBooksByCategory(character.categoryId).slice(0, 4) : [];
   const atEnd = knowledge ? step >= knowledge.steps.length : false;
   const HeroIcon = character ? HERO_ICONS[character.id] : HERO_ICONS.adam;
   const quizIntro = character ? QUIZ_BANKS[character.categoryId]?.intro ?? '' : '';
@@ -160,6 +170,29 @@ export function AdamPanel({
     setActiveId(id);
     setTab('explain');
     setStep(0);
+    setHeroQuestion('');
+    setHeroAnswer(null);
+    setHeroSources([]);
+    setHeroFailed(false);
+  };
+
+  /* Вопрос -> /ask-books (реальные источники) -> озвучка HeroSpeech. */
+  const askTheHero = async () => {
+    const q = heroQuestion.trim();
+    if (!q || heroThinking) return;
+    unlockSpeech();
+    setHeroThinking(true);
+    setHeroFailed(false);
+    setHeroAnswer(null);
+    setHeroSources([]);
+    const result = await askHero(q, character?.categoryId);
+    setHeroThinking(false);
+    if (result === null) {
+      setHeroFailed(true);
+      return;
+    }
+    setHeroAnswer(result.answer);
+    setHeroSources(result.sources);
   };
 
   return (
@@ -448,16 +481,41 @@ export function AdamPanel({
                 <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Книги раздела</p>
 
                 <div className="space-y-2">
-                  {books.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-                    >
-                      <BookOpen className="h-4 w-4 shrink-0" />
-
-                      <span className="line-clamp-1">{item.title}</span>
-                    </div>
-                  ))}
+                  {heroSources.length === 0 ? (
+                    <p className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                      Спроси героя во вкладке «Спросить» — он найдёт книги по этой теме
+                      в фонде ЭБС и покажет библиографию по ГОСТ Р.
+                    </p>
+                  ) : (
+                    heroSources.map((item, index) => (
+                      <div
+                        key={`${item.title}-${index}`}
+                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                      >
+                        <div className="flex items-start gap-2">
+                          <BookOpen className="mt-0.5 h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1">
+                            <span className="line-clamp-2">{item.title}</span>
+                            {item.gost && (
+                              <span className="mt-1 block text-[11px] leading-relaxed text-muted-foreground">
+                                {item.gost}
+                              </span>
+                            )}
+                            {item.url && (
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noreferrer noopener"
+                                className="mt-1 inline-block text-[11px] text-primary hover:underline"
+                              >
+                                Открыть в ЭБС
+                              </a>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -482,6 +540,111 @@ export function AdamPanel({
                     <ListChecks className="h-4 w-4 mr-1" /> Пройти тест
                   </Button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {character && tab === 'ask' && (
+            <div className="space-y-3 animate-adam-enter">
+              <div className="flex gap-3">
+                <CharacterAvatar id={character.id} size={40} talking={heroThinking} />
+
+                <div className="rounded-2xl rounded-tl-sm bg-muted px-4 py-3 flex-1">
+                  {heroAnswer === null && !heroFailed ? (
+                    <HeroSpeech
+                      text={`Спрашивай! Я найду книги по твоей теме в фонде ЭБС и отвечу по ним — со ссылками и по ГОСТ Р.`}
+                      voice={character.id}
+                    />
+                  ) : heroFailed ? (
+                    <p className="text-sm text-foreground">
+                      Не получилось связаться с библиотекой. Проверь, что сервер доступен, и
+                      попробуй ещё раз.
+                    </p>
+                  ) : (
+                    <HeroSpeech
+                      key={`ask-${character.id}-${heroAnswer?.length ?? 0}`}
+                      text={heroAnswer ?? ''}
+                      voice={character.id}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {heroThinking && (
+                <p className="text-xs text-muted-foreground" role="status">
+                  {character.name} думает, ответ будет через минуту…
+                </p>
+              )}
+
+              {heroSources.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mb-2">
+                    Источники по теме ({heroSources.length})
+                  </p>
+
+                  <div className="space-y-2">
+                    {heroSources.map((item, index) => (
+                      <div
+                        key={`src-${item.title}-${index}`}
+                        className="rounded-xl border border-border bg-background px-3 py-2"
+                      >
+                        <p className="text-sm text-foreground leading-snug">{item.title}</p>
+                        {item.authors && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">{item.authors}</p>
+                        )}
+                        {item.gost && (
+                          <p className="mt-1 rounded bg-muted/60 p-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                            {item.gost}
+                          </p>
+                        )}
+                        {item.url && (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="mt-1 inline-block text-[11px] text-primary hover:underline"
+                          >
+                            Открыть в ЭБС
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {heroAnswer !== null && heroSources.length === 0 && !heroFailed && (
+                <p className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
+                  В фонде ЭБС по этой теме подходящих изданий нет — герой ответил честно,
+                  ничего не выдумывая. Попробуй другую формулировку.
+                </p>
+              )}
+
+              <div className="flex gap-2">
+                <label className="flex-1">
+                  <span className="sr-only">Вопрос герою</span>
+                  <input
+                    type="text"
+                    value={heroQuestion}
+                    onChange={(event) => setHeroQuestion(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        void askTheHero();
+                      }
+                    }}
+                    placeholder="Например: что почитать по конституционному праву?"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70"
+                  />
+                </label>
+
+                <Button size="sm" onClick={() => void askTheHero()} disabled={heroThinking || !heroQuestion.trim()}>
+                  {heroThinking ? 'Ждём…' : heroFailed ? (
+                    <><RefreshCw className="h-4 w-4 mr-1" /> Повторить</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4 mr-1" /> Спросить</>
+                  )}
+                </Button>
               </div>
             </div>
           )}

@@ -1,12 +1,29 @@
 /* API-клиент библиотеки: GET /api/books, GET /api/books/{id}.
    Base URL — window.__APP_CONFIG__.libraryApi, default '/api'.
-   При недоступности бэкенда (или сборке для GitHub Pages) — ТИХИЙ
-   fallback на статический каталог CATALOG_BOOKS, без проброса ошибок. */
+   T-1039: тихий fallback на статический демо-каталог УДАЛЁН — при
+   недоступности бэкенда возвращаем пустой список, а не выдуманные книги. */
 
-import type { Book } from './libraryData'
-import { CATALOG_BOOKS } from './catalog'
-
-export type { Book }
+export interface Book {
+  id: string
+  title: string
+  author: string
+  year: number
+  categoryId: string
+  /** Краткая аннотация для карточки. */
+  annotation: string
+  /** Ключевые слова/дисциплины для поиска. */
+  tags: string[]
+  /** Объём в страницах. */
+  pages: number
+  /** Подпись времени чтения, например «6 ч чтения». */
+  readTime?: string
+  /** Показывать в избранном. */
+  featured?: boolean
+  /** Обложка. */
+  cover: string
+  /** Текст книги в markdown. */
+  content: string
+}
 
 /** Сырая книга от бэкенда /api (поля — надмножество Book, лишнее отбрасываем в fromApiBook). */
 export interface ApiBook {
@@ -65,28 +82,28 @@ async function fetchJson(path: string): Promise<unknown | null> {
   }
 }
 
-/** Список книг: сначала бэкенд, при любой проблеме — тихий fallback на CATALOG_BOOKS. */
+/** Список книг: бэкенд или пустой список. Демо-каталога больше нет. */
 export async function getBooks(): Promise<Book[]> {
   const data = await fetchJson('/books')
   if (Array.isArray(data)) {
     try {
       return (data as ApiBook[]).map(fromApiBook)
     } catch {
-      return [...CATALOG_BOOKS]
+      return []
     }
   }
-  return [...CATALOG_BOOKS]
+  return []
 }
 
-/** Одна книга по id: сначала бэкенд, иначе — тихий fallback на CATALOG_BOOKS. */
+/** Одна книга по id: бэкенд или undefined (выдумывать нечего). */
 export async function getBookById(id: string): Promise<Book | undefined> {
   const data = await fetchJson(`/books/${encodeURIComponent(id)}`)
   if (data !== null && typeof data === 'object' && !Array.isArray(data)) {
     try {
       return fromApiBook(data as ApiBook)
     } catch {
-      /* ниже — fallback */
+      /* бэкенд ответил мусором — считаем, что книги нет */
     }
   }
-  return CATALOG_BOOKS.find((book) => book.id === id)
+  return undefined
 }

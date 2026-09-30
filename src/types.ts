@@ -1,9 +1,3 @@
-export interface SupabaseClientConfig {
-  url: string
-  publishableKey: string
-  schema: string
-}
-
 export interface SystemConfig {
   apiUrl: string
   projectId: string
@@ -14,13 +8,11 @@ export interface SystemConfig {
   libraryApi?: string
   /** Токен записи в каталог (заголовок X-Ingest-Token для POST/PATCH /api/books). */
   ingestToken?: string
-  supabase?: SupabaseClientConfig
+  /** Поиск ЭБС на сайте; по умолчанию берётся libraryApi. */
+  searchApi?: string
 }
 
-export interface AuthUser {
-  id: string
-  email: string | null
-}
+/* T-1034: AuthUser и SupabaseClientConfig удалены вместе с авторизацией. */
 
 declare global {
   interface Window {

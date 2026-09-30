@@ -1,12 +1,7 @@
 /// <reference types="vite/client" />
 
-// Unified __APP_CONFIG__ type declaration (used by supabase.ts)
-interface SupabaseClientConfig {
-  url: string
-  publishableKey: string
-  schema: string
-}
-
+// Unified __APP_CONFIG__ type declaration.
+// T-1034: Supabase удалён вместе с авторизацией, остались только адреса API.
 interface SystemConfig {
   apiUrl: string
   projectId: string
@@ -15,7 +10,10 @@ interface SystemConfig {
   siteName?: string
   /** Base URL библиотечного бэкенда (новый роутер /api). */
   libraryApi?: string
-  supabase?: SupabaseClientConfig
+  /** Поиск ЭБС; по умолчанию берётся libraryApi. */
+  searchApi?: string
+  /** Токен записи в каталог. */
+  ingestToken?: string
 }
 
 declare global {

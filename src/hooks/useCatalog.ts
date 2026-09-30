@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { Book } from '@/lib/libraryData'
-import { CATALOG_BOOKS } from '@/lib/catalog'
 import { getBooks } from '@/lib/api'
+import type { Book } from '@/lib/api'
 
 export interface UseCatalogResult {
   books: Book[]
@@ -9,10 +8,10 @@ export interface UseCatalogResult {
   error: Error | null
 }
 
-/* Каталог через API с тихим fallback: начальное состояние — статический
-   каталог, поэтому без бэкенда поведение страниц не меняется. */
+/* Каталог только из API: T-1039 убрал статический демо-каталог, поэтому
+   стартовый список пуст, а при недоступности бэкенда остаётся пустым. */
 export function useCatalog(): UseCatalogResult {
-  const [books, setBooks] = useState<Book[]>(() => [...CATALOG_BOOKS])
+  const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
 

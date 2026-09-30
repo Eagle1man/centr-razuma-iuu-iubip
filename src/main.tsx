@@ -2,14 +2,13 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
-import { initSupabase } from './lib/supabase'
 import { resolveBasename } from './lib/basename'
 import './fonts.css'
 import './index.css'
 import './custom.css'
 
-// Initialize Supabase before React renders (used by intake ingest calls).
-initSupabase()
+// T-1034/T-1039: Supabase и авторизация удалены с сайта целиком, клиент базы
+// больше не инициализируется — приём книг идёт через backend /api.
 
 /* basename берём из <base href> (см. src/lib/basename.ts: логика и причина,
    почему запасной вариант не должен быть жёстким '/preview'). */
