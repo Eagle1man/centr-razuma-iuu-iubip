@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Download, FileSpreadsheet, Plus, RefreshCw, UploadCloud } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -298,7 +297,7 @@ export default function Intake() {
       <Card>
         <CardHeader>
           <CardTitle>Принятые книги</CardTitle>
-          <CardDescription>Последние записи каталога со ссылкой на карточку /book/:id.</CardDescription>
+          <CardDescription>Последние записи каталога, принятые через импорт.</CardDescription>
         </CardHeader>
         <CardContent>
           {accepted.length === 0 ? (
@@ -310,16 +309,13 @@ export default function Intake() {
               {accepted.map((b) => (
                 <li key={String(b.id)} className="flex items-center justify-between gap-3 py-2">
                   <div className="min-w-0">
-                    <Link to={`/book/${String(b.id)}`} className="truncate font-medium text-primary hover:underline">
+                    <p className="truncate font-medium">
                       {b.title}
-                    </Link>
+                    </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {[b.author, b.year ? String(b.year) : ''].filter(Boolean).join(' · ') || '—'}
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to={`/book/${String(b.id)}`}>Открыть</Link>
-                  </Button>
                 </li>
               ))}
             </ul>

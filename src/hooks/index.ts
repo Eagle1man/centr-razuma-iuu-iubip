@@ -1,5 +1,3 @@
-export { useAuth } from './useAuth';
-export type { AuthUser } from './useAuth';
 export { useTheme, ThemeProvider } from './useTheme';
 export { usePageMeta } from './usePageMeta';
 export { useCatalog } from './useCatalog';

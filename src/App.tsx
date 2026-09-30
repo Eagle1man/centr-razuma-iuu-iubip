@@ -5,12 +5,10 @@ import { Toaster } from '@/components/ui/sonner'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout'
 import AdamAssistant from './components/AdamAssistantPanel'
-import { getBookById } from './lib/libraryData'
 import { routes } from './routes'
 
-/* ВОССТАНОВЛЕНО: файл не дошёл в дампе. Роутинг берётся из routes.tsx,
-   чтобы App оставался тонким: он только раскладывает маршруты по раскладкам
-   default/bare и подключает общие обёртки. */
+/* T-1034: каталог книг убран — привязки к /book/:id и libraryData здесь
+   больше нет. Роутинг берётся из routes.tsx. */
 
 function AppShell() {
   const location = useLocation()
@@ -22,13 +20,6 @@ function AppShell() {
   }, [])
 
   const active = routes.find((route) => matchPath(route.path, location.pathname))
-
-  /* Страница издания передаёт панели героев своё направление (в бандле — проп
-     initialCategory у xC/bC): герой раздела оказывается выбран сразу. */
-  const bookMatch = matchPath('/book/:id', location.pathname)
-  const initialCategory = bookMatch?.params.id
-    ? getBookById(bookMatch.params.id)?.categoryId
-    : undefined
 
   return (
     <div className="preload-guard" key={location.pathname} data-e2e="razum-app">
@@ -45,7 +36,7 @@ function AppShell() {
           />
         ))}
       </Routes>
-      {active?.layout !== 'bare' && <AdamAssistant initialCategory={initialCategory} />}
+      {active?.layout !== 'bare' && <AdamAssistant />}
     </div>
   )
 }

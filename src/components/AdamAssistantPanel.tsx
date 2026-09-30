@@ -1,5 +1,4 @@
 import { useEffect, useState, type ComponentType } from 'react';
-import { Link } from 'react-router-dom';
 import {
   AudioLines,
   BookOpen,
@@ -450,16 +449,14 @@ export function AdamPanel({
 
                 <div className="space-y-2">
                   {books.map((item) => (
-                    <Link
+                    <div
                       key={item.id}
-                      to={`/book/${item.id}`}
-                      onClick={onClose}
-                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors hover:border-primary hover:text-primary"
+                      className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
                     >
                       <BookOpen className="h-4 w-4 shrink-0" />
 
                       <span className="line-clamp-1">{item.title}</span>
-                    </Link>
+                    </div>
                   ))}
                 </div>
 

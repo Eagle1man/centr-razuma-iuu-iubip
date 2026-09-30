@@ -1,14 +1,7 @@
-import * as React from 'react'
-import Home from './pages/Home'
 import Search from './pages/Search'
 import Intake from './pages/Intake'
-import Book from './pages/Book'
-import Reader from './pages/Reader'
-import PostEditor from './pages/PostEditor'
-import Login from './pages/Login'
-import Signup from './pages/Signup'
 import NotFound from './pages/NotFound'
-import { ProtectedRoute } from './components/ProtectedRoute'
+import { Navigate } from 'react-router-dom'
 
 export interface RouteConfig {
   path: string
@@ -18,69 +11,32 @@ export interface RouteConfig {
   layout: 'default' | 'bare'
 }
 
+/* T-1034: встроенный каталог книг и вход убраны. Главная — Поиск ЭБС.
+   /intake — служебное окно библиотекаря (Excel-импорт), доступно по прямому
+   URL, из меню убрано (showInNav: false), без guard — авторизации на сайте нет.
+   /search оставлен как алиас главной для внешних ссылок. */
+
 export const routes: RouteConfig[] = [
   {
     path: '/',
-    label: 'Каталог',
-    element: <Home />,
-    showInNav: true,
-    layout: 'default'
-  },
-  {
-    path: '/search',
     label: 'Поиск ЭБС',
     element: <Search />,
     showInNav: true,
     layout: 'default'
   },
   {
+    path: '/search',
+    label: 'Поиск ЭБС',
+    element: <Navigate to="/" replace />,
+    showInNav: false,
+    layout: 'default'
+  },
+  {
     path: '/intake',
     label: 'Приём книг',
-    element: <ProtectedRoute><Intake /></ProtectedRoute>,
-    showInNav: true,
-    layout: 'default'
-  },
-  {
-    path: '/book/:id',
-    label: 'Книга',
-    element: <Book />,
+    element: <Intake />,
     showInNav: false,
     layout: 'default'
-  },
-  {
-    path: '/read/:id',
-    label: 'Чтение',
-    element: <Reader />,
-    showInNav: false,
-    layout: 'bare'
-  },
-  {
-    path: '/editor',
-    label: 'Добавить книгу',
-    element: <ProtectedRoute><PostEditor /></ProtectedRoute>,
-    showInNav: false,
-    layout: 'default'
-  },
-  {
-    path: '/editor/:id',
-    label: 'Редактирование книги',
-    element: <ProtectedRoute><PostEditor /></ProtectedRoute>,
-    showInNav: false,
-    layout: 'default'
-  },
-  {
-    path: '/login',
-    label: 'Вход',
-    element: <Login />,
-    showInNav: false,
-    layout: 'bare'
-  },
-  {
-    path: '/signup',
-    label: 'Регистрация',
-    element: <Signup />,
-    showInNav: false,
-    layout: 'bare'
   },
   {
     path: '*',

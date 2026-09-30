@@ -8,9 +8,7 @@ import './fonts.css'
 import './index.css'
 import './custom.css'
 
-// Initialize Supabase before React renders. Component effects (useAuth)
-// run before App's effects, so initializing in an effect would let
-// those hooks run against an uninitialized SDK on first paint.
+// Initialize Supabase before React renders (used by intake ingest calls).
 initSupabase()
 
 /* basename берём из <base href> (см. src/lib/basename.ts: логика и причина,

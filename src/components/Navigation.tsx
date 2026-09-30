@@ -1,15 +1,13 @@
 import { Link, NavLink } from 'react-router-dom'
-import { Library, LogIn, LogOut, PenLine } from 'lucide-react'
+import { Library } from 'lucide-react'
 import { routes } from '../routes'
-import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/button'
 import { ThemeToggle } from './ThemeToggle'
 
-/* ВОССТАНОВЛЕНО: файл не дошёл в дампе. Пункты меню берутся из routes.tsx
-   по showInNav — так порядок и подписи остаются в одном месте. */
+/* T-1034: вход/регистрация убраны полностью — в шапке только навигация
+   (Поиск ЭБС) и переключатель темы. Пункты меню берутся из routes.tsx
+   по showInNav. */
 
 export function Navigation() {
-  const { isAuthenticated, signOut } = useAuth()
   const navItems = routes.filter((route) => route.showInNav)
 
   return (
@@ -42,27 +40,6 @@ export function Navigation() {
 
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
-          {isAuthenticated ? (
-            <>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/editor">
-                  <PenLine className="mr-2 h-4 w-4" />
-                  Добавить книгу
-                </Link>
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => void signOut()}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Выйти
-              </Button>
-            </>
-          ) : (
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/login">
-                <LogIn className="mr-2 h-4 w-4" />
-                Войти
-              </Link>
-            </Button>
-          )}
         </div>
       </div>
     </header>
