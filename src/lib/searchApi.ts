@@ -23,6 +23,8 @@ export interface SearchResponse {
   sources: EbsSource[]
   message: string
   lista_literatury: string[]
+  expanded_from?: string
+  expanded_terms?: string[]
 }
 
 function getSearchBaseUrl(): string {
@@ -39,16 +41,23 @@ function getSearchBaseUrl(): string {
 }
 
 /** Запрос к бэкенду. null — бэкенд недоступен (показываем заглушку). */
-export async function searchCatalog(query: string, topK = 10): Promise<SearchResponse | null> {
+export async function searchCatalog(
+  query: string,
+  topK = 10,
+  expandMode: 'fast' | 'llm' | 'off' = 'fast',
+): Promise<SearchResponse | null> {
   const q = query.trim()
   if (!q) return null
   const controller = new AbortController()
-  const timer = window.setTimeout(() => controller.abort(), 15000)
+  const timer = window.setTimeout(
+    () => controller.abort(),
+    expandMode === 'llm' ? 180000 : 15000,
+  )
   try {
     const res = await fetch(`${getSearchBaseUrl()}/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ query: q, top_k: topK }),
+      body: JSON.stringify({ query: q, top_k: topK, expand_mode: expandMode }),
       signal: controller.signal,
     })
     if (!res.ok) return null
@@ -60,6 +69,10 @@ export async function searchCatalog(query: string, topK = 10): Promise<SearchRes
       message: typeof data.message === 'string' ? data.message : '',
       lista_literatury: Array.isArray(data.lista_literatury)
         ? (data.lista_literatury as string[])
+        : [],
+      expanded_from: typeof data.expanded_from === 'string' ? data.expanded_from : q,
+      expanded_terms: Array.isArray(data.expanded_terms)
+        ? (data.expanded_terms as string[])
         : [],
     }
   } catch {
@@ -94,6 +107,52 @@ export async function askModel(question: string): Promise<string | null> {
     window.clearTimeout(timer)
   }
 }
+/* Уточнение неоднозначного запроса: «пра» -> «Вы имели в виду: право,
+   правоведение...?». Варианты берутся из реального фонда, модель — опционально. */
+export interface ClarifyCandidate {
+  term: string
+  source: string
+}
+
+export interface ClarifyResponse {
+  query: string
+  need_clarify: boolean
+  candidates: ClarifyCandidate[]
+  message: string
+}
+
+/** POST /clarify — мгновенно (fast) или через модель (llm). */
+export async function clarifyQuery(
+  query: string,
+  expandMode: 'fast' | 'llm' = 'fast',
+): Promise<ClarifyResponse | null> {
+  const q = query.trim()
+  if (q.length < 2) return null
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), expandMode === 'llm' ? 180000 : 15000)
+  try {
+    const res = await fetch(`${getSearchBaseUrl()}/clarify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ query: q, expand_mode: expandMode }),
+      signal: controller.signal,
+    })
+    if (!res.ok) return null
+    const data = (await res.json()) as Partial<ClarifyResponse>
+    if (!data || !Array.isArray(data.candidates)) return null
+    return {
+      query: typeof data.query === 'string' ? data.query : q,
+      need_clarify: Boolean(data.need_clarify),
+      candidates: data.candidates as ClarifyCandidate[],
+      message: typeof data.message === 'string' ? data.message : '',
+    }
+  } catch {
+    return null
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
+
 /** Копирование текста: Clipboard API, fallback через textarea для http/Pages. */
 export async function copyText(text: string): Promise<boolean> {
   try {
