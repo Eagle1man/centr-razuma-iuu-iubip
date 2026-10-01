@@ -32,7 +32,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { usePageMeta } from '@/hooks/usePageMeta'
-import { rankSources, searchDirections } from '@/lib/fuzzySearch'
+import { fixTypos, rankSources, searchDirections } from '@/lib/fuzzySearch'
 import type { Direction } from '@/lib/fuzzySearch'
 import { ACADEMY_LINKS, ACADEMY_ORDER, DIRECTIONS } from '@/lib/directions'
 import { askModel, clarifyQuery, copyText, searchCatalog } from '@/lib/searchApi'
@@ -78,7 +78,7 @@ export default function SearchPage() {
   usePageMeta({
     title: 'Поиск литературы ЭБС',
     description:
-      'Поиск учебной литературы по дисциплинам в электронных библиотечных системах: карточки книг со ссылками и копирование списка по ГОСТ Р.',
+      'Поиск учебной литературы по дисциплинам: карточки книг со ссылками.',
   })
 
   /* Живой нечёткий фильтр карточек по мере ввода (MiniSearch + Fuse.js). */
@@ -104,6 +104,13 @@ export default function SearchPage() {
   const runSearch = async (raw: string, withExpand = true) => {
     const q = raw.trim()
     if (!q || status === 'loading' || status === 'asking' || status === 'expanding') return
+    // Чиним очевидные опечатки ДО отправки на сервер: «медецина» в эмбеддинги
+    // уходит как есть и находит не то. Пользователю показываем исправленный
+    // запрос в поле, чтобы он видел, что именно ищет.
+    const fixed = fixTypos(q, DIRECTIONS.flatMap((d) => d.tags))
+    if (fixed !== q) {
+      setQuery(fixed)
+    }
     setStatus('loading')
     setMessage('')
     setAnswer(null)
@@ -190,15 +197,14 @@ export default function SearchPage() {
     <div className="mx-auto max-w-6xl px-4 py-12 md:py-16">
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
         <Library className="h-4 w-4" />
-        Электронные библиотечные системы · Лань и другие
+        Поиск книг для студентов
       </p>
       <h1 className="mt-3 text-3xl font-semibold leading-tight md:text-4xl">
         Поиск литературы по предмету
       </h1>
       <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
         Введите предмет — например «экономика» или «право». Поиск понимает опечатки и
-        неполные слова, а если тема неоднозначна — уточнит у вас. Найденные записи
-        копируются по ГОСТ Р прямо в реферат.
+        неполные слова, а если тема неоднозначна — уточнит у вас.
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 flex max-w-2xl gap-2">
@@ -351,7 +357,7 @@ export default function SearchPage() {
                 ) : (
                   <Copy className="mr-2 h-4 w-4" />
                 )}
-                {copied === '__all__' ? 'Скопировано' : 'Скопировать всё для реферата'}
+                {copied === '__all__' ? 'Скопировано' : 'Скопировать всё'}
               </Button>
             )}
           </div>
@@ -461,7 +467,7 @@ export default function SearchPage() {
                         ) : (
                           <Copy className="mr-1.5 h-3.5 w-3.5" />
                         )}
-                        {copied === key ? 'Скопировано' : 'Скопировать по ГОСТ Р'}
+                        {copied === key ? 'Скопировано' : 'Скопировать запись'}
                       </Button>
                     </CardFooter>
                   </Card>

@@ -7,9 +7,13 @@
    книги. Ответ озвучивается голосом и показывается с библиографией по ГОСТ. */
 
 import type { EbsSource } from './searchApi'
+import { SPOKEN_STYLE_HINT } from './spokenStyle'
 
 export interface HeroAnswer {
+  /** Короткая устная реплика — её озвучивает герой. */
   answer: string
+  /** Развёрнутый текст без библиографии; пусто, если ответ и так короткий. */
+  answerFull: string
   sources: EbsSource[]
   found: number
 }
@@ -32,6 +36,7 @@ export async function askHero(
   question: string,
   topic?: string,
   timeoutMs = 180000,
+  character?: string,
 ): Promise<HeroAnswer | null> {
   const q = question.trim()
   if (!q) return null
@@ -42,18 +47,26 @@ export async function askHero(
     const res = await fetch(`${base}/ask-books`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ question: q, topic: topic || undefined, top_k: 4 }),
+      body: JSON.stringify({
+        question: q,
+        topic: topic || undefined,
+        top_k: 4,
+        style: 'spoken',
+        character: character || undefined,
+      }),
       signal: controller.signal,
     })
     if (!res.ok) return null
     const data = (await res.json()) as Partial<{
       answer: string
+      answer_full?: string
       sources: EbsSource[]
       found: number
     }>
     if (!data || typeof data.answer !== 'string') return null
     return {
       answer: data.answer,
+      answerFull: typeof data.answer_full === 'string' ? data.answer_full : '',
       sources: Array.isArray(data.sources) ? (data.sources as EbsSource[]) : [],
       found: typeof data.found === 'number' ? data.found : (data.sources?.length ?? 0),
     }

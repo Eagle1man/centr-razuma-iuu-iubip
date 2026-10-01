@@ -36,6 +36,7 @@ import {
 } from '../lib/heroSounds';
 import { ADAM_GREETING, getAdamKnowledge } from '../lib/adamKnowledge';
 import { askHero } from '../lib/heroChat';
+import { shortSpoken } from '../lib/spokenStyle';
 import type { EbsSource } from '../lib/searchApi';
 import { CHARACTERS, getCharacterByCategory, type CharacterId } from '../lib/characters';
 import { QUIZ_BANKS } from '../lib/quizBanks';
@@ -126,6 +127,7 @@ export function AdamPanel({
   const [heroQuestion, setHeroQuestion] = useState('');
   const [heroThinking, setHeroThinking] = useState(false);
   const [heroAnswer, setHeroAnswer] = useState<string | null>(null);
+  const [heroAnswerFull, setHeroAnswerFull] = useState('');
   const [heroSources, setHeroSources] = useState<EbsSource[]>([]);
   const [heroFailed, setHeroFailed] = useState(false);
 
@@ -172,6 +174,7 @@ export function AdamPanel({
     setStep(0);
     setHeroQuestion('');
     setHeroAnswer(null);
+    setHeroAnswerFull('');
     setHeroSources([]);
     setHeroFailed(false);
   };
@@ -184,14 +187,16 @@ export function AdamPanel({
     setHeroThinking(true);
     setHeroFailed(false);
     setHeroAnswer(null);
+    setHeroAnswerFull('');
     setHeroSources([]);
-    const result = await askHero(q, character?.categoryId);
+    const result = await askHero(q, character?.categoryId, 180000, character?.id);
     setHeroThinking(false);
     if (result === null) {
       setHeroFailed(true);
       return;
     }
     setHeroAnswer(result.answer);
+    setHeroAnswerFull(result.answerFull);
     setHeroSources(result.sources);
   };
 
@@ -484,7 +489,7 @@ export function AdamPanel({
                   {heroSources.length === 0 ? (
                     <p className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
                       Спроси героя во вкладке «Спросить» — он найдёт книги по этой теме
-                      в фонде ЭБС и покажет библиографию по ГОСТ Р.
+                      в библиотеке и покажет библиографические записи.
                     </p>
                   ) : (
                     heroSources.map((item, index) => (
@@ -552,7 +557,7 @@ export function AdamPanel({
                 <div className="rounded-2xl rounded-tl-sm bg-muted px-4 py-3 flex-1">
                   {heroAnswer === null && !heroFailed ? (
                     <HeroSpeech
-                      text={`Спрашивай! Я найду книги по твоей теме в фонде ЭБС и отвечу по ним — со ссылками и по ГОСТ Р.`}
+                      text={`Спрашивай! Я найду книги по твоей теме и отвечу по ним — со ссылками.`}
                       voice={character.id}
                     />
                   ) : heroFailed ? (
@@ -561,11 +566,26 @@ export function AdamPanel({
                       попробуй ещё раз.
                     </p>
                   ) : (
-                    <HeroSpeech
-                      key={`ask-${character.id}-${heroAnswer?.length ?? 0}`}
-                      text={heroAnswer ?? ''}
-                      voice={character.id}
-                    />
+                    <>
+                      {/* Сервер уже ужал ответ до устной реплики (2-4
+                          предложения), а развёрнутый текст без библиографии
+                          лежит рядом и открывается по кнопке. */}
+                      <HeroSpeech
+                        key={`ask-${character.id}-${heroAnswer?.length ?? 0}`}
+                        text={shortSpoken(heroAnswer ?? '')}
+                        voice={character.id}
+                      />
+                      {heroAnswerFull && (
+                        <details className="mt-2">
+                          <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                            Показать ответ целиком
+                          </summary>
+                          <p className="mt-1.5 whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
+                            {heroAnswerFull}
+                          </p>
+                        </details>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -615,7 +635,7 @@ export function AdamPanel({
 
               {heroAnswer !== null && heroSources.length === 0 && !heroFailed && (
                 <p className="rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
-                  В фонде ЭБС по этой теме подходящих изданий нет — герой ответил честно,
+                  В библиотеке по этой теме подходящих изданий нет — герой ответил честно,
                   ничего не выдумывая. Попробуй другую формулировку.
                 </p>
               )}
